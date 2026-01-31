@@ -1,78 +1,119 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from "react";
+import { Loader } from "@googlemaps/js-api-loader";
 
 type LatLng = { lat: number; lng: number };
 
-type Place = {
+type PlaceResult = {
     place_id: string;
     name?: string;
-    geometry?: { location?: { lat?: number; lng?: number } };
+    geometry?: { location?: { lat: number; lng: number } };
+    vicinity?: string;
+    [key: string]: any;
 };
 
 type Props = {
     center: LatLng;
-    places?: Place[]; // make optional so undefined won’t crash
-    onCenterChange?: (c: LatLng) => void; // optional
+    places?: PlaceResult[]; // allow undefined safely
+    onCenterChange?: (c: LatLng) => void; // optional (prevents “not a function”)
 };
 
 export default function GoogleMapView({ center, places = [], onCenterChange }: Props) {
-    const mapRef = useRef<google.maps.Map | null>(null);
     const elRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<google.maps.Map | null>(null);
+    const markersRef = useRef<google.maps.Marker[]>([]);
+    const listenerRef = useRef<google.maps.MapsEventListener | null>(null);
 
-    // pins: never crash if places is undefined
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+    // Convert places -> pins safely
     const pins = useMemo(() => {
         return (places ?? [])
             .map((p) => ({
                 id: p.place_id,
-                name: p.name ?? "Unnamed",
-                lat: p.geometry?.location?.lat,
-                lng: p.geometry?.location?.lng,
+                name: p.name ?? "Untitled",
+                loc: p.geometry?.location,
             }))
-            .filter((p) => typeof p.lat === "number" && typeof p.lng === "number");
+            .filter((x) => !!x.loc) as { id: string; name: string; loc: LatLng }[];
     }, [places]);
 
+    // Init map (loads Google Maps JS if needed)
     useEffect(() => {
-        if (!elRef.current) return;
+        let cancelled = false;
 
-        // init map once
-        if (!mapRef.current) {
-            mapRef.current = new google.maps.Map(elRef.current, {
-                center,
-                zoom: 13,
-                disableDefaultUI: true,
+        async function init() {
+            if (!elRef.current) return;
+            if (!apiKey) {
+                console.error("Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
+                return;
+            }
+
+            const loader = new Loader({
+                apiKey,
+                version: "weekly",
+                libraries: ["places"],
             });
 
-            // only attach listener if callback exists
-            if (typeof onCenterChange === "function") {
-                mapRef.current.addListener("idle", () => {
-                    const c = mapRef.current?.getCenter();
-                    if (!c) return;
-                    onCenterChange({ lat: c.lat(), lng: c.lng() });
+            await loader.load();
+            if (cancelled) return;
+
+            if (!mapRef.current) {
+                mapRef.current = new google.maps.Map(elRef.current, {
+                    center,
+                    zoom: 14,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
                 });
+
+                // Only wire this if the parent passed it
+                if (onCenterChange) {
+                    listenerRef.current = mapRef.current.addListener("idle", () => {
+                        const c = mapRef.current?.getCenter();
+                        if (!c) return;
+                        onCenterChange({ lat: c.lat(), lng: c.lng() });
+                    });
+                }
+            } else {
+                mapRef.current.setCenter(center);
             }
-            return;
         }
 
-        // update center if it changes
-        mapRef.current.setCenter(center);
-    }, [center, onCenterChange]);
+        init();
 
+        return () => {
+            cancelled = true;
+            if (listenerRef.current) {
+                listenerRef.current.remove();
+                listenerRef.current = null;
+            }
+        };
+    }, [apiKey, center.lat, center.lng, onCenterChange]);
+
+    // Render markers when pins change
     useEffect(() => {
-        if (!mapRef.current) return;
+        const map = mapRef.current;
+        if (!map) return;
 
-        // simple marker render (wipe/re-add)
-        // NOTE: if you already manage markers elsewhere, keep your version.
-        (mapRef.current as any).__markers?.forEach((m: google.maps.Marker) => m.setMap(null));
-        (mapRef.current as any).__markers = pins.map(
-            (p) =>
-                new google.maps.Marker({
-                    map: mapRef.current!,
-                    position: { lat: p.lat!, lng: p.lng! },
-                    title: p.name,
-                })
-        );
+        // clear old markers
+        for (const m of markersRef.current) m.setMap(null);
+        markersRef.current = [];
+
+        // add new markers
+        markersRef.current = pins.map((pin) => {
+            const marker = new google.maps.Marker({
+                position: pin.loc,
+                map,
+                title: pin.name,
+            });
+            return marker;
+        });
     }, [pins]);
 
-    return <div ref={elRef} className="w-full h-full rounded-3xl overflow-hidden" />;
+    return (
+        <div className="w-full h-[70vh] lg:h-[80vh] rounded-3xl overflow-hidden border border-zinc-100 shadow-sm">
+            <div ref={elRef} className="w-full h-full" />
+        </div>
+    );
 }
