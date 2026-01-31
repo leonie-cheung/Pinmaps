@@ -49,7 +49,7 @@ export default function Header() {
 
     return (
         <>
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-10 py-8 flex items-center justify-between">
+            <header className="sticky top-0 z-50 bg-white px-10 py-8 flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2">
                     <div style={{ backgroundColor: "var(--logo)" }} className="w-14 h-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-md shadow-pink-200">
