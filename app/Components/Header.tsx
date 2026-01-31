@@ -50,12 +50,14 @@ export default function Header() {
     return (
         <>
             <header className="sticky top-0 z-50 bg-white px-10 py-8 flex items-center justify-between">
-                {/* Logo */}
-                <Link href="/" className="flex items-center gap-2">
-                    <div style={{ backgroundColor: "var(--logo)" }} className="w-14 h-14 rounded-[1.25rem] flex items-center justify-center text-white shadow-md shadow-pink-200"               >
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                        </svg>
+                <Link href="/" className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-[1.25rem] bg-white border border-zinc-100 shadow-md shadow-zinc-100 flex items-center justify-center overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src="/favicon.ico"
+                            alt="Logo"
+                            className="w-9 h-9 object-contain"
+                        />
                     </div>
                 </Link>
 
@@ -63,6 +65,7 @@ export default function Header() {
                 <nav className="hidden md:flex items-center gap-14">
                     {NAV_ITEMS.map((item) => {
                         const active = isActive(pathname, item.href);
+
                         return (
                             <Link
                                 key={item.label}
@@ -143,6 +146,7 @@ export default function Header() {
             <nav className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-10 py-5 rounded-full flex items-center gap-10 shadow-2xl">
                 {NAV_ITEMS.map((item) => {
                     const active = isActive(pathname, item.href);
+
                     return (
                         <Link
                             key={item.label}
