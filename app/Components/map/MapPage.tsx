@@ -18,7 +18,6 @@ type PlacesNearbyResponse = {
 };
 
 const LONDON = { lat: 51.5074, lng: -0.1278 };
-
 const DEFAULT_RADIUS = 2000;
 const DEFAULT_TYPE = "restaurant";
 
@@ -31,6 +30,7 @@ export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Option 1: Use browser location, otherwise fallback to London
   useEffect(() => {
     if (!("geolocation" in navigator)) {
       setCenter(LONDON);
@@ -38,13 +38,13 @@ export default function MapPage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      () => {
-        setCenter(LONDON);
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
+        (pos) => {
+          setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          setCenter(LONDON);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
     );
   }, []);
 
@@ -86,26 +86,26 @@ export default function MapPage() {
   }, [queryString]);
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
-      <main className="px-6 py-6 md:px-10 md:py-8">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="lg:w-[360px]">
-            <FiltersPanel
-              radius={radius}
-              setRadius={setRadius}
-              type={type}
-              setType={setType}
-              loading={loading}
-              onRefresh={fetchPlaces}
-              error={error}
-            />
-          </div>
+      <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
+        <main className="px-6 py-6 md:px-10 md:py-8">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="lg:w-[360px]">
+              <FiltersPanel
+                  radius={radius}
+                  setRadius={setRadius}
+                  type={type}
+                  setType={setType}
+                  loading={loading}
+                  onRefresh={fetchPlaces}
+                  error={error}
+              />
+            </div>
 
-          <div className="flex-1">
-            <GoogleMapView center={center} places={places} />
+            <div className="flex-1">
+              <GoogleMapView center={center} places={places} />
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
   );
 }
