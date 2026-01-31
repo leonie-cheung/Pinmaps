@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 
-// Mock data for the collage categories and titles seen in the image
 const COLLAGE_DATA = [
   { id: 1, category: "Cafe", color: "bg-amber-100/50" },
   { id: 2, category: "Restaurant", color: "bg-blue-100/50" },
