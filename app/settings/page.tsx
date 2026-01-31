@@ -251,13 +251,6 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
-
-            <div className="mt-24 pt-12 border-t border-zinc-100 flex flex-col items-center">
-                <p className="text-base text-zinc-400 font-bold">App Version 1.0.4</p>
-                <button className="mt-8 px-12 py-5 rounded-[2rem] bg-rose-50 text-lg font-black text-rose-500 hover:bg-rose-100 hover:text-rose-600 transition-all active:scale-95 shadow-sm">
-                    Sign Out
-                </button>
-            </div>
           </>
         ) : (
           <div>
