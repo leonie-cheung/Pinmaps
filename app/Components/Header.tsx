@@ -142,11 +142,15 @@ export default function Header() {
                     href={searchValue ? `/?q=${encodeURIComponent(searchValue)}` : "/"} 
                     className={`flex items-center gap-2 transition-opacity ${isSearchOpen ? 'max-md:hidden' : 'opacity-100'}`}
                 >
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-[1.25rem] bg-pink-500 flex items-center justify-center text-white shadow-lg shadow-pink-100">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 md:w-8 h-8">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                        </svg>
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-[1.25rem] bg-white border border-zinc-100 shadow-lg shadow-zinc-200 flex items-center justify-center overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src="/favicon.ico"
+                            alt="Logo"
+                            className="w-7 h-7 md:w-8 md:h-8 object-contain"
+                        />
                     </div>
+
                 </Link>
 
                 {/* Desktop nav - Preserve search query when switching tabs */}
