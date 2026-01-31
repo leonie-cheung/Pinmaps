@@ -1,18 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { MapPin, RefreshCcw, ChevronDown } from "lucide-react";
 
 type Props = {
+    isLoaded: boolean;
     radius: number;
     setRadius: (v: number) => void;
     type: string;
     setType: (v: string) => void;
+
+    // include optional name so you can display city name nicely
+    setLocation: (lat: number, lng: number, name?: string) => void;
+    locationName: string;
+
     loading: boolean;
     onRefresh: () => void | Promise<void>;
     error?: string | null;
 };
 
-const TYPES: { label: string; value: string }[] = [
+const TYPES = [
     { label: "Restaurants", value: "restaurant" },
     { label: "Cafes", value: "cafe" },
     { label: "Bars", value: "bar" },
@@ -22,70 +29,127 @@ const TYPES: { label: string; value: string }[] = [
 ];
 
 export default function FiltersPanel({
+                                         isLoaded,
                                          radius,
                                          setRadius,
                                          type,
                                          setType,
+                                         setLocation,
+                                         locationName,
                                          loading,
                                          onRefresh,
                                          error,
                                      }: Props) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const autoCompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+    useEffect(() => {
+        // IMPORTANT: only init after Maps is loaded
+        if (!isLoaded) return;
+        if (!inputRef.current) return;
+        if (autoCompleteRef.current) return;
+
+        autoCompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+            componentRestrictions: { country: "GB" }, // UK only
+            types: ["(cities)"],
+            fields: ["geometry", "name"],
+        });
+
+        autoCompleteRef.current.addListener("place_changed", () => {
+            const place = autoCompleteRef.current?.getPlace();
+            const loc = place?.geometry?.location;
+            if (!loc) return;
+            setLocation(loc.lat(), loc.lng(), place?.name ?? "Selected city");
+        });
+    }, [isLoaded, setLocation]);
+
     return (
-        <div className="w-full rounded-3xl border border-zinc-100 bg-white/80 backdrop-blur p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
+        <div className="w-full rounded-[2.5rem] border border-zinc-100 bg-white p-8 shadow-xl shadow-zinc-200/50">
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <p className="text-sm font-semibold text-zinc-900">Search filters</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">Pick a type + radius, then refresh.</p>
+                    <h2 className="text-xl font-bold text-zinc-900">Search Filters</h2>
+                    <p className="text-xs text-zinc-400 font-medium">Find the perfect spot</p>
                 </div>
 
                 <button
                     onClick={() => onRefresh()}
                     disabled={loading}
-                    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition-colors ${
-                        loading ? "bg-zinc-100 text-zinc-400 cursor-not-allowed" : "bg-black text-white hover:bg-zinc-800"
+                    className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-all ${
+                        loading
+                            ? "bg-zinc-100 text-zinc-400 animate-spin"
+                            : "bg-zinc-900 text-white hover:scale-105 active:scale-95"
                     }`}
+                    aria-label="Refresh"
                 >
-                    {loading ? "Loading…" : "Refresh"}
+                    <RefreshCcw size={20} />
                 </button>
             </div>
 
-            {error ? (
-                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error && (
+                <div className="mb-6 rounded-2xl bg-amber-50 p-4 text-xs font-semibold text-amber-700 border border-amber-100 italic">
                     {error}
                 </div>
-            ) : null}
+            )}
 
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6">
                 <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
-                        Type
+                    <label className="block text-[10px] font-black uppercase text-zinc-400 mb-2 ml-1 tracking-widest">
+                        Location
                     </label>
-                    <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-zinc-400"
-                    >
-                        {TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>
-                                {t.label}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className="w-full rounded-2xl border border-zinc-100 bg-zinc-50/50 pl-12 pr-4 py-4 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-zinc-100/50 transition-all"
+                            placeholder="Type a UK city..."
+                            defaultValue={locationName === "Current Location" ? "" : locationName}
+                        />
+                    </div>
+                </div>
+
+                <div className="relative">
+                    <label className="block text-[10px] font-black uppercase text-zinc-400 mb-2 ml-1 tracking-widest">
+                        Spot Type
+                    </label>
+                    <div className="relative">
+                        <select
+                            value={type}
+                            onChange={(e) => setType(e.target.value)}
+                            className="w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-5 py-4 text-sm font-medium outline-none focus:bg-white transition-all appearance-none cursor-pointer"
+                        >
+                            {TYPES.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                    {t.label}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+                            size={16}
+                        />
+                    </div>
                 </div>
 
                 <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
-                        Radius (meters)
-                    </label>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="text-[10px] font-black uppercase text-zinc-400 ml-1 tracking-widest">
+                            Radius
+                        </label>
+                        <span className="text-xs font-bold text-zinc-900 bg-zinc-100 px-2 py-1 rounded-md">
+              {radius}m
+            </span>
+                    </div>
+
                     <input
-                        type="number"
-                        min={100}
-                        step={100}
+                        type="range"
+                        min={500}
+                        max={5000}
+                        step={500}
                         value={radius}
                         onChange={(e) => setRadius(Number(e.target.value))}
-                        className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none focus:border-zinc-400"
+                        className="w-full h-1.5 bg-zinc-100 rounded-lg appearance-none cursor-pointer accent-zinc-900"
                     />
-                    <p className="mt-2 text-xs text-zinc-400">Try 1000–3000 for walking distance.</p>
                 </div>
             </div>
         </div>

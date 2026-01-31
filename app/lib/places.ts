@@ -1,29 +1,20 @@
-type NearbyArgs = {
-    apiKey: string;
+export type NearbyArgs = {
     lat: number;
     lng: number;
     radius: number;
-    keyword: string;
-    openNow: boolean;
+    type: string;
 };
 
-export function buildNearbySearchUrl({
-                                         apiKey,
-                                         lat,
-                                         lng,
-                                         radius,
-                                         keyword,
-                                         openNow,
-                                     }: NearbyArgs) {
-    const params = new URLSearchParams({
-        key: apiKey,
+export function buildNearbySearchUrl({ lat, lng, radius, type }: NearbyArgs) {
+    const key = process.env.GOOGLE_PLACES_API_KEY; // server-only key
+    if (!key) throw new Error("Missing GOOGLE_PLACES_API_KEY");
+
+    const sp = new URLSearchParams({
         location: `${lat},${lng}`,
         radius: String(radius),
-        keyword,
+        type,
+        key,
     });
 
-    if (openNow) params.set("opennow", "true");
-
-    // Nearby Search
-    return `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params.toString()}`;
+    return `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${sp.toString()}`;
 }
