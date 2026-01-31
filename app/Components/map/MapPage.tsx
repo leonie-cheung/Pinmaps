@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import FiltersPanel from "./FiltersPanel";
 import GoogleMapView from "./GoogleMapView";
 
@@ -32,10 +32,7 @@ export default function MapPage() {
 
   // Option 1: Use browser location, otherwise fallback to London
   useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      setCenter(LONDON);
-      return;
-    }
+    if (!("geolocation" in navigator)) return;
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -57,7 +54,7 @@ export default function MapPage() {
     return sp.toString();
   }, [center.lat, center.lng, radius, type]);
 
-  async function fetchPlaces() {
+  const fetchPlaces = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -78,12 +75,11 @@ export default function MapPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [queryString]);
 
   useEffect(() => {
     fetchPlaces();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryString]);
+  }, [fetchPlaces]);
 
   return (
       <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
@@ -102,7 +98,11 @@ export default function MapPage() {
             </div>
 
             <div className="flex-1">
-              <GoogleMapView center={center} places={places} />
+              <GoogleMapView
+                  center={center}
+                  places={places} // always an array now
+                  onCenterChange={setCenter} // fixes "onCenterChange is not a function"
+              />
             </div>
           </div>
         </main>
