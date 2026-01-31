@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Added useRouter
 import React, { useEffect, useRef, useState } from "react";
+import { supabase } from "../lib/supabaseClient"; // Ensure this path is correct
 
 type TabKey = "Friends" | "Explore" | "Nearby" | "Map";
 type MenuKey = "Profile" | "Save" | "Post" | "Settings";
@@ -22,17 +23,30 @@ const DROPDOWN_ITEMS: { label: MenuKey; href: string }[] = [
 ];
 
 function isActive(pathname: string, href: string) {
-    // "/" needs exact match; other routes can be prefix match
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(href + "/");
 }
 
 export default function Header() {
     const pathname = usePathname();
+    const router = useRouter(); // Initialize router
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-    // close dropdown when clicking outside
+    // 1. Logic for Signing Out
+    const handleSignOut = async () => {
+        setIsDropdownOpen(false);
+        const { error } = await supabase.auth.signOut();
+
+        if (error) {
+            console.error("Error signing out:", error.message);
+        } else {
+            // Force a redirect to profile/login page after logout
+            router.push("/profile");
+            router.refresh(); // Refresh to clear any stale server-side data
+        }
+    };
+
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (
@@ -52,7 +66,6 @@ export default function Header() {
             <header className="sticky top-0 z-50 bg-white px-10 py-8 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-[1.25rem] bg-white border border-zinc-100 shadow-md shadow-zinc-100 flex items-center justify-center overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src="/favicon.ico"
                             alt="Logo"
@@ -61,11 +74,9 @@ export default function Header() {
                     </div>
                 </Link>
 
-                {/* Desktop nav */}
                 <nav className="hidden md:flex items-center gap-14">
                     {NAV_ITEMS.map((item) => {
                         const active = isActive(pathname, item.href);
-
                         return (
                             <Link
                                 key={item.label}
@@ -83,23 +94,10 @@ export default function Header() {
                     })}
                 </nav>
 
-                {/* Search + profile */}
                 <div className="flex items-center gap-6">
                     <button className="w-14 h-14 border-2 border-dashed border-zinc-300 rounded-2xl flex items-center justify-center hover:border-zinc-400 transition-colors">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-zinc-500"
-                        >
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.3-4.3" />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-500">
+                            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
                         </svg>
                     </button>
 
@@ -130,8 +128,9 @@ export default function Header() {
 
                                 <div className="my-2 border-t border-zinc-50" />
 
+                                {/* 2. Sign Out Button updated with handleSignOut */}
                                 <button
-                                    onClick={() => setIsDropdownOpen(false)}
+                                    onClick={handleSignOut}
                                     className="w-full text-left px-5 py-3 text-base font-semibold text-rose-500 hover:bg-rose-50 transition-colors"
                                 >
                                     Sign Out
@@ -142,11 +141,9 @@ export default function Header() {
                 </div>
             </header>
 
-            {/* Mobile nav */}
             <nav className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-10 py-5 rounded-full flex items-center gap-10 shadow-2xl">
                 {NAV_ITEMS.map((item) => {
                     const active = isActive(pathname, item.href);
-
                     return (
                         <Link
                             key={item.label}
