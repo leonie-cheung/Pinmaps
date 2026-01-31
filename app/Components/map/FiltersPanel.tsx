@@ -5,13 +5,10 @@ import React from "react";
 type Props = {
     radius: number;
     setRadius: (v: number) => void;
-
     type: string;
     setType: (v: string) => void;
-
     loading: boolean;
     onRefresh: () => void | Promise<void>;
-
     error?: string | null;
 };
 
@@ -45,9 +42,7 @@ export default function FiltersPanel({
                     onClick={() => onRefresh()}
                     disabled={loading}
                     className={`rounded-2xl px-4 py-2 text-sm font-semibold transition-colors ${
-                        loading
-                            ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                            : "bg-black text-white hover:bg-zinc-800"
+                        loading ? "bg-zinc-100 text-zinc-400 cursor-not-allowed" : "bg-black text-white hover:bg-zinc-800"
                     }`}
                 >
                     {loading ? "Loading…" : "Refresh"}
@@ -61,7 +56,6 @@ export default function FiltersPanel({
             ) : null}
 
             <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Type */}
                 <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
                         Type
@@ -79,7 +73,6 @@ export default function FiltersPanel({
                     </select>
                 </div>
 
-                {/* Radius */}
                 <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
                         Radius (meters)

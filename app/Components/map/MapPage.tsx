@@ -32,7 +32,10 @@ export default function MapPage() {
 
   // Option 1: Use browser location, otherwise fallback to London
   useEffect(() => {
-    if (!("geolocation" in navigator)) return;
+    if (!("geolocation" in navigator)) {
+      setCenter(LONDON);
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -100,8 +103,8 @@ export default function MapPage() {
             <div className="flex-1">
               <GoogleMapView
                   center={center}
-                  places={places} // always an array now
-                  onCenterChange={setCenter} // fixes "onCenterChange is not a function"
+                  places={places} // always an array
+                  onCenterChange={setCenter} // safe + fixes "not a function"
               />
             </div>
           </div>
