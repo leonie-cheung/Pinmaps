@@ -1,65 +1,152 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState } from 'react';
+
+// Mock data for the collage categories and titles seen in the image
+const COLLAGE_DATA = [
+  { id: 1, category: "Cafe", color: "bg-amber-100/50" },
+  { id: 2, category: "Restaurant", color: "bg-blue-100/50" },
+  { id: 3, category: "Bar", color: "bg-zinc-200/50" },
+  { id: 4, category: "Exhibition", color: "bg-emerald-100/50" },
+  { id: 5, category: "Weekend trip", color: "bg-rose-100/50" },
+  { id: 6, category: "Bakery", color: "bg-orange-50/50" },
+  { id: 7, category: "Museum", color: "bg-indigo-50/50" },
+  { id: 8, category: "Brunch", color: "bg-yellow-50/50" },
+];
+
+/**
+ * A helper component to render a blank collage card placeholder.
+ * The images have been removed as requested.
+ */
+const CollageCard = ({ color }: { color: string }) => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className={`relative w-full aspect-[2/3.5] rounded-3xl overflow-hidden border border-zinc-100/50 shadow-sm group hover:shadow-md transition-shadow cursor-pointer ${color}`}>
+      {/* Blank placeholder interior */}
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-dashed border-zinc-300 flex items-center justify-center group-hover:border-zinc-400 transition-colors">
+          <span className="text-zinc-400 font-light text-xl">+</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+      
+      {/* Subtle overlay on hover */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+    </div>
+  );
+};
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('Explore');
+
+  const navItems = ['Friends', 'Explore', 'Nearby', 'Map'];
+
+  return (
+    <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-pink-500 rounded-2xl flex items-center justify-center text-white shadow-sm shadow-pink-200">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Center Navigation */}
+        <nav className="hidden md:flex items-center gap-8">
+          {navItems.map((item) => (
+            <button
+              key={item}
+              onClick={() => setActiveTab(item)}
+              className={`text-xl font-medium transition-all relative py-1 ${
+                activeTab === item ? 'text-black' : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+            >
+              {item}
+              {activeTab === item && (
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-black rounded-full" />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Search & User Profile */}
+        <div className="flex items-center gap-4">
+          <button className="w-12 h-12 border-2 border-dashed border-zinc-300 rounded-xl flex items-center justify-center hover:border-zinc-400 transition-colors">
+            {/* Replaced Lucide Search with Inline SVG */}
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="20" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="text-zinc-500"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </button>
+          
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-zinc-100 p-0.5">
+            <div className="w-full h-full bg-yellow-100 rounded-full flex items-center justify-center text-xs font-bold text-yellow-700">
+              U
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="px-6 py-8">
+        <div className="flex overflow-x-auto gap-8 pb-12 no-scrollbar">
+          {COLLAGE_DATA.map((item) => (
+            <div key={item.id} className="flex-shrink-0 w-64 md:w-72 flex flex-col gap-4">
+              {/* Category Title */}
+              <div className="h-8 flex items-center px-1">
+                <span className="text-sm font-medium text-zinc-500 uppercase tracking-wider">
+                  {item.category}
+                </span>
+              </div>
+              
+              {/* The Collage Card Placeholder */}
+              <CollageCard color={item.color} />
+
+              {/* Second row of cards */}
+              <div className="mt-4">
+                <CollageCard color={item.color} />
+              </div>
+            </div>
+          ))}
         </div>
       </main>
+
+      {/* Mobile Navigation */}
+      <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-8 py-4 rounded-full flex items-center gap-8 shadow-2xl">
+        {navItems.map((item) => (
+          <button
+            key={item}
+            onClick={() => setActiveTab(item)}
+            className={`text-sm font-medium transition-colors ${
+              activeTab === item ? 'text-white' : 'text-zinc-500'
+            }`}
+          >
+            {item}
+          </button>
+        ))}
+      </nav>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}} />
     </div>
   );
 }
