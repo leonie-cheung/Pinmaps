@@ -16,7 +16,7 @@ const COLLAGE_DATA = [
 /**
  * A helper component to render a blank collage card placeholder.
  */
-const CollageCard = ({ color }: { color: string }) => {
+const CollageCard = ({ color }) => {
   return (
     <div className={`relative w-full aspect-[2/3.5] rounded-3xl overflow-hidden border border-zinc-100/50 shadow-sm group hover:shadow-md transition-shadow cursor-pointer ${color}`}>
       {/* Blank placeholder interior */}
@@ -35,15 +35,15 @@ const CollageCard = ({ color }: { color: string }) => {
 export default function App() {
   const [activeTab, setActiveTab] = useState('Explore');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef(null);
 
   const navItems = ['Friends', 'Explore', 'Nearby', 'Map'];
   const dropdownOptions = ['Profile', 'Save', 'Post', 'Setting'];
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
     }
@@ -53,9 +53,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
-      {/* Navigation Header - Made bigger with py-8 */}
+      {/* Navigation Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-10 py-8 flex items-center justify-between">
-        {/* Logo - Increased size */}
+        {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="w-14 h-14 bg-pink-500 rounded-[1.25rem] flex items-center justify-center text-white shadow-md shadow-pink-200">
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
@@ -64,7 +64,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Center Navigation - Increased text size and gap */}
+        {/* Center Navigation */}
         <nav className="hidden md:flex items-center gap-14">
           {navItems.map((item) => (
             <button
@@ -82,7 +82,7 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Search & User Profile - Scaled up icons and buttons */}
+        {/* Search & User Profile */}
         <div className="flex items-center gap-6">
           <button className="w-14 h-14 border-2 border-dashed border-zinc-300 rounded-2xl flex items-center justify-center hover:border-zinc-400 transition-colors">
             <svg 
@@ -102,7 +102,6 @@ export default function App() {
             </svg>
           </button>
           
-          {/* Profile Button with Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -115,7 +114,6 @@ export default function App() {
               </div>
             </button>
 
-            {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-4 w-56 bg-white border border-zinc-100 rounded-3xl shadow-2xl py-3 z-[60] animate-in fade-in zoom-in duration-200 origin-top-right">
                 {dropdownOptions.map((option) => (
@@ -141,22 +139,26 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="px-10 py-8">
+      <main className="px-10 py-9">
+        {/* UNLINKED CATEGORY BAR: Added justify-center to center the labels */}
+        <div className="flex items-center justify-center gap-12 mb-12 border-b border-zinc-100 pb-6 px-2 overflow-x-auto no-scrollbar">
+          {COLLAGE_DATA.map((item) => (
+            <button 
+              key={`label-${item.id}`}
+              className="flex-shrink-0 text-xs font-black uppercase tracking-[0.3em] text-zinc-300 hover:text-pink-500 transition-colors whitespace-nowrap"
+            >
+              {item.category}
+            </button>
+          ))}
+        </div>
+
+        {/* Collage Cards Grid/Scroll */}
         <div className="flex overflow-x-auto gap-10 pb-12 no-scrollbar">
           {COLLAGE_DATA.map((item) => (
             <div key={item.id} className="flex-shrink-0 w-72 md:w-80 flex flex-col gap-6">
-              {/* Category Title */}
-              <div className="h-10 flex items-center px-2">
-                <span className="text-base font-bold text-zinc-500 uppercase tracking-[0.2em]">
-                  {item.category}
-                </span>
-              </div>
-              
-              {/* The Collage Card Placeholder */}
+              {/* Cards are now pure visual elements, "unlinked" from the structural titles */}
               <CollageCard color={item.color} />
-
-              {/* Second row of cards */}
-              <div className="mt-4">
+              <div className="mt-2">
                 <CollageCard color={item.color} />
               </div>
             </div>
