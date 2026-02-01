@@ -3,6 +3,8 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
+
 
 const CATEGORIES = ["Cafe", "Restaurant", "Bar", "Exhibition", "Weekend trip", "Bakery", "Museum", "Brunch"];
 
@@ -17,6 +19,12 @@ export default function PostPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationName, setLocationName] = useState("");
+    const [locationLat, setLocationLat] = useState<number | null>(null);
+    const [locationLng, setLocationLng] = useState<number | null>(null);
+
+    const [ac, setAc] = useState<google.maps.places.Autocomplete | null>(null);
+
 
   const hashtags = useMemo(() => {
     // "#cozy #StudySpot matcha" -> ["cozy","studyspot","matcha"]
@@ -28,6 +36,14 @@ export default function PostPage() {
       .map((t) => t.toLowerCase())
       .filter((t) => t.length > 0);
   }, [hashtagsText]);
+
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+    const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-places-post",
+    googleMapsApiKey: apiKey,
+    libraries: ["places"],
+    });
+
 
   function onFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files ?? []);
@@ -55,6 +71,9 @@ export default function PostPage() {
     setError(null);
 
     if (!placeName.trim()) return setError("Please enter a place name.");
+    if (locationLat == null || locationLng == null) {
+    return setError("Please select a place from the dropdown suggestions.");
+    }
     if (files.length === 0) return setError("Please upload at least 1 photo.");
 
     try {
@@ -68,14 +87,20 @@ export default function PostPage() {
       }
 
       // 2) insert post row
-      const { error: insertError } = await supabase.from("posts").insert({
+    const { error: insertError } = await supabase.from("posts").insert({
         category,
         caption: `${placeName.trim()} — ${caption.trim()}`.trim(),
         rating,
         hashtags,
         image_urls: urls,
-        image_url: urls[0], // compatibility for your current Explore UI
-      });
+        image_url: urls[0],
+
+        // NEW:
+        location_name: locationName.trim(),
+        location_lat: locationLat,
+        location_lng: locationLng,
+    });
+
 
       if (insertError) throw insertError;
 
@@ -95,15 +120,68 @@ export default function PostPage() {
         <h1 className="text-2xl font-semibold mb-6">Create Post</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+            <div>
             <label className="text-sm text-zinc-600">Place name</label>
-            <input
-              value={placeName}
-              onChange={(e) => setPlaceName(e.target.value)}
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="e.g. Dishoom Shoreditch"
-            />
-          </div>
+
+            {loadError ? (
+                <div className="mt-1 text-sm text-rose-600">
+                Google Maps failed to load (check API key / Places API enabled).
+                </div>
+            ) : !isLoaded ? (
+                <div className="mt-1 text-sm text-zinc-500">Loading place search…</div>
+            ) : (
+                <Autocomplete
+                onLoad={(a) => setAc(a)}
+                onPlaceChanged={() => {
+                    if (!ac) return;
+
+                    const place = ac.getPlace();
+                    const loc = place.geometry?.location;
+
+                    // This is what shows in your input
+                    const name = place.name || place.formatted_address || placeName;
+
+                    setPlaceName(name);
+                    setLocationName(name);
+
+                    if (loc) {
+                    setLocationLat(loc.lat());
+                    setLocationLng(loc.lng());
+                    } else {
+                    setLocationLat(null);
+                    setLocationLng(null);
+                    }
+                }}
+                >
+                <input
+                    value={placeName}
+                    onChange={(e) => {
+                    // user is typing, not selecting yet
+                    setPlaceName(e.target.value);
+                    setLocationName(e.target.value);
+
+                    // important: typing alone does NOT guarantee a real place,
+                    // so lat/lng must be cleared until they pick a suggestion
+                    setLocationLat(null);
+                    setLocationLng(null);
+                    }}
+                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    placeholder="e.g. Dishoom Shoreditch"
+                />
+                </Autocomplete>
+            )}
+
+            {/* Optional: show feedback */}
+            {locationLat && locationLng ? (
+                <p className="text-xs text-zinc-500 mt-1">Location saved ✓</p>
+            ) : (
+                <p className="text-xs text-zinc-500 mt-1">
+                Pick a suggestion so we can save coordinates.
+                </p>
+            )}
+            </div>
+
+
 
           <div>
             <label className="text-sm text-zinc-600">Category</label>
