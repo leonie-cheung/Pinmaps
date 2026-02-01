@@ -12,6 +12,7 @@ type PostRow = {
   rating: number | null;
   hashtags: string[] | null;
   created_at: string;
+  user_id: string | null; // Changed to nullable for safety
 };
 
 export default function Page() {
@@ -21,7 +22,6 @@ export default function Page() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedPost, setSelectedPost] = useState<PostRow | null>(null);
 
-  // Trending terms
   const TRENDING_KEYWORDS = ["Cafe", "Bar", "Aesthetic", "Vintage", "Brunch", "Hidden Gem", "Date Night", "Interior", "Exhibition", "Cocktails", "Coffee", "Bakery", "Rooftop", "Cozy", "Modern", "Minimalist", "Neon", "Speakeasy"];
 
   const shuffleSuggestions = () => {
@@ -46,8 +46,30 @@ export default function Page() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
-      if (data) setAllPosts(data as PostRow[]);
+
+      // 1. Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+
+      // 2. Fetch ALL posts
+      const { data, error } = await supabase
+          .from("posts")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading posts:", error);
+      } else if (data) {
+        let posts = data as PostRow[];
+
+        // 3. SAFE FILTER: Only remove the post if it explicitly matches your user_id.
+        // This keeps posts that don't have a user_id yet (null) visible to everyone.
+        if (currentUserId) {
+          posts = posts.filter(post => post.user_id !== currentUserId);
+        }
+
+        setAllPosts(posts);
+      }
       setLoading(false);
     }
     load();
@@ -99,14 +121,25 @@ export default function Page() {
 
           {/* Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-            {filteredPosts.map((post) => (
-                <PostCard key={post.id} post={post} onClick={() => setSelectedPost(post)} />
-            ))}
+            {loading ? (
+                <p className="col-span-full text-center text-zinc-400 animate-pulse font-black uppercase tracking-widest text-xs py-20">Refreshing vibes...</p>
+            ) : filteredPosts.length === 0 ? (
+                <div className="col-span-full text-center py-20 border-2 border-dashed border-zinc-100 rounded-[3rem]">
+                  <p className="text-zinc-300 font-black uppercase tracking-widest text-xs">No posts found</p>
+                </div>
+            ) : (
+                filteredPosts.map((post) => (
+                    <PostCard key={post.id} post={post} onClick={() => setSelectedPost(post)} />
+                ))
+            )}
           </div>
 
           {/* --- LIGHTBOX MODAL --- */}
           {selectedPost && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-xl p-4 md:p-10 animate-in fade-in duration-300">
+              <div
+                  className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-xl p-4 md:p-10 animate-in fade-in duration-300"
+                  onClick={() => setSelectedPost(null)}
+              >
                 <button
                     onClick={() => setSelectedPost(null)}
                     className="absolute top-6 right-6 p-3 bg-zinc-100 rounded-full hover:bg-zinc-200 transition-colors z-50"
@@ -114,7 +147,10 @@ export default function Page() {
                   <X size={24} />
                 </button>
 
-                <div className="max-w-5xl w-full h-full flex flex-col md:flex-row gap-8 items-center justify-center">
+                <div
+                    className="max-w-5xl w-full h-full flex flex-col md:flex-row gap-8 items-center justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex-1 h-full max-h-[80vh] relative group">
                     <img
                         src={selectedPost.image_url || ""}
@@ -153,7 +189,6 @@ function PostCard({ post, onClick }: { post: PostRow; onClick: () => void }) {
             <div className="w-full h-full flex items-center justify-center text-zinc-300 text-xs">No Image</div>
         )}
 
-        {/* Hover Overlay: Slides up from bottom */}
         <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 block mb-2">{post.category}</span>
           {post.caption && <p className="text-base font-bold line-clamp-2 mb-2 leading-tight">{post.caption}</p>}
