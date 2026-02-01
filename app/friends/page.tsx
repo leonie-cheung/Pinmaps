@@ -38,10 +38,13 @@ export default function Page() {
 
         let postData = data as PostRow[] ?? [];
 
-        // 3. SAFE FILTER: Only show posts that DON'T belong to the current user
-        if (currentUserId) {
-          postData = postData.filter(post => post.user_id !== currentUserId);
-        }
+        // 3. STRICT FILTER: 
+        // Must have a user_id AND that user_id must NOT be the current user
+        postData = postData.filter(post =>
+            post.user_id !== null &&
+            post.user_id !== "" &&
+            post.user_id !== currentUserId
+        );
 
         setAllPosts(postData);
       } catch (err) {
