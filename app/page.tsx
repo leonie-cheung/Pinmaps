@@ -2,18 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useSearchParams } from "next/navigation";
-
-const CATEGORY_COLOURS: Record<string, string> = {
-  Cafe: "bg-amber-100/50",
-  Restaurant: "bg-blue-100/50",
-  Bar: "bg-zinc-200/50",
-  Exhibition: "bg-emerald-100/50",
-  "Weekend trip": "bg-rose-100/50",
-  Bakery: "bg-orange-50/50",
-  Museum: "bg-indigo-50/50",
-  Brunch: "bg-yellow-50/50",
-};
+import { Sparkles, RefreshCw, X, Star } from "lucide-react";
 
 type PostRow = {
   id: string;
@@ -25,27 +14,29 @@ type PostRow = {
   created_at: string;
 };
 
-type PostsByCategory = Record<string, PostRow[]>;
-
 export default function Page() {
   const [allPosts, setAllPosts] = useState<PostRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedPost, setSelectedPost] = useState<PostRow | null>(null);
 
-  // Sync with global search query via URL and custom events
+  // Trending terms
+  const TRENDING_KEYWORDS = ["Cafe", "Bar", "Aesthetic", "Vintage", "Brunch", "Hidden Gem", "Date Night", "Interior", "Exhibition", "Cocktails", "Coffee", "Bakery", "Rooftop", "Cozy", "Modern", "Minimalist", "Neon", "Speakeasy"];
+
+  const shuffleSuggestions = () => {
+    setSuggestions([...TRENDING_KEYWORDS].sort(() => 0.5 - Math.random()).slice(0, 15));
+  };
+
   useEffect(() => {
+    shuffleSuggestions();
     const updateSearch = () => {
-      if (typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search);
-        setSearchQuery(params.get("q") || "");
-      }
+      const params = new URLSearchParams(window.location.search);
+      setSearchQuery(params.get("q") || "");
     };
-
     updateSearch();
     window.addEventListener("searchChange", updateSearch);
     window.addEventListener("popstate", updateSearch);
-    
     return () => {
       window.removeEventListener("searchChange", updateSearch);
       window.removeEventListener("popstate", updateSearch);
@@ -55,135 +46,124 @@ export default function Page() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from("posts")
-        .select("id,category,image_url,caption,rating,hashtags,created_at")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-
-      setAllPosts((data as PostRow[]) ?? []);
+      const { data } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
+      if (data) setAllPosts(data as PostRow[]);
       setLoading(false);
     }
-
     load();
   }, []);
 
-  const postsByCategory = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
-    const filtered = allPosts.filter(post => {
-      if (!query) return true;
-      const inCaption = post.caption?.toLowerCase().includes(query);
-      const inCategory = post.category?.toLowerCase().includes(query);
-      const inHashtags = post.hashtags?.some(tag => tag.toLowerCase().includes(query));
-      return inCaption || inCategory || inHashtags;
-    });
+  const handleSuggestionClick = (term: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("q", term);
+    window.history.replaceState(null, "", `?${params.toString()}`);
+    window.dispatchEvent(new Event("searchChange"));
+  };
 
-    const grouped: PostsByCategory = {};
-    for (const post of filtered) {
-      const cat = post.category ?? "Other";
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push(post);
-    }
-    return grouped;
+  const filteredPosts = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    return allPosts.filter(post =>
+        !query || post.caption?.toLowerCase().includes(query) || post.category?.toLowerCase().includes(query)
+    );
   }, [allPosts, searchQuery]);
 
-  const sortedCategories = useMemo(() => {
-    return Object.keys(postsByCategory).sort(
-      (a, b) => (postsByCategory[b]?.length ?? 0) - (postsByCategory[a]?.length ?? 0)
-    );
-  }, [postsByCategory]);
-
   return (
-    <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
-      <main className="px-10 py-8">
-        {loading && <p className="text-sm text-zinc-500 mb-6">Loading posts…</p>}
+      <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-pink-100">
+        <main className="px-6 md:px-10 py-8">
 
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <p className="font-medium">Error loading posts:</p>
-            <p className="mt-1">{error}</p>
-          </div>
-        )}
-
-        {searchQuery && !loading && (
-          <div className="mb-10 animate-in fade-in slide-in-from-left-4">
-            <h2 className="text-3xl font-black tracking-tight text-zinc-900">
-              Results for <span className="text-zinc-400">"{searchQuery}"</span>
-            </h2>
-            <p className="text-zinc-500 font-medium mt-1">Found matching posts in {sortedCategories.length} categories.</p>
-          </div>
-        )}
-
-        <div className="flex overflow-x-auto gap-10 pb-12 no-scrollbar">
-          {sortedCategories.length === 0 && !loading && !error ? (
-            <div className="text-2xl text-zinc-300 font-bold py-20 px-2">
-              {searchQuery ? "No matches found." : "No posts yet."}
-            </div>
-          ) : null}
-
-          {sortedCategories.map((category) => {
-            const colour = CATEGORY_COLOURS[category] ?? "bg-zinc-50";
-            const posts = postsByCategory[category] ?? [];
-
-            return (
-              <div key={category} className="flex-shrink-0 w-72 md:w-80 flex flex-col gap-6">
-                <div className="h-8 flex items-center px-1">
-                  <span className="text-lg font-bold text-zinc-400 uppercase tracking-widest">
-                    {category}
-                  </span>
-                </div>
-
-                {posts.map((post) => (
-                  <PostCard key={post.id} post={post} colourClass={colour} />
-                ))}
+          {/* Trending Bar */}
+          <div className="mb-14">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3 text-zinc-400">
+                <Sparkles size={18} />
+                <h3 className="text-sm font-black uppercase tracking-[0.3em]">Trending</h3>
               </div>
-            );
-          })}
-        </div>
-      </main>
+              <button onClick={shuffleSuggestions} className="text-zinc-300 hover:text-zinc-900 transition-colors">
+                <RefreshCw size={16} />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {suggestions.map((term) => (
+                  <button
+                      key={term}
+                      onClick={() => handleSuggestionClick(term)}
+                      className={`px-5 py-2 rounded-full text-sm font-bold border transition-all ${
+                          searchQuery.toLowerCase() === term.toLowerCase() ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-500 border-zinc-100 hover:border-zinc-300'
+                      }`}
+                  >
+                    {term}
+                  </button>
+              ))}
+            </div>
+          </div>
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            .no-scrollbar::-webkit-scrollbar { display: none; }
-            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          `,
-        }}
-      />
-    </div>
+          {/* Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+            {filteredPosts.map((post) => (
+                <PostCard key={post.id} post={post} onClick={() => setSelectedPost(post)} />
+            ))}
+          </div>
+
+          {/* --- LIGHTBOX MODAL --- */}
+          {selectedPost && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-xl p-4 md:p-10 animate-in fade-in duration-300">
+                <button
+                    onClick={() => setSelectedPost(null)}
+                    className="absolute top-6 right-6 p-3 bg-zinc-100 rounded-full hover:bg-zinc-200 transition-colors z-50"
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="max-w-5xl w-full h-full flex flex-col md:flex-row gap-8 items-center justify-center">
+                  <div className="flex-1 h-full max-h-[80vh] relative group">
+                    <img
+                        src={selectedPost.image_url || ""}
+                        className="w-full h-full object-contain rounded-3xl shadow-2xl"
+                        alt=""
+                    />
+                  </div>
+                  <div className="w-full md:w-80 flex flex-col gap-4">
+                    <span className="text-xs font-black uppercase tracking-widest text-zinc-400">{selectedPost.category}</span>
+                    <h2 className="text-3xl font-black leading-tight">{selectedPost.caption}</h2>
+                    {selectedPost.rating && (
+                        <div className="flex items-center gap-2 text-xl font-bold">
+                          <Star size={20} fill="currentColor" className="text-amber-400" />
+                          {selectedPost.rating}/5
+                        </div>
+                    )}
+                    <p className="text-zinc-500 text-sm mt-4 italic">Posted on {new Date(selectedPost.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+          )}
+        </main>
+      </div>
   );
 }
 
-function PostCard({ post, colourClass }: { post: PostRow; colourClass: string }) {
+function PostCard({ post, onClick }: { post: PostRow; onClick: () => void }) {
   return (
-    <div
-      className={`relative w-full aspect-[2/3] rounded-[2rem] overflow-hidden border border-zinc-100 shadow-sm group hover:shadow-2xl transition-all duration-300 cursor-pointer ${colourClass}`}
-    >
-      {post.image_url ? (
-        <img src={post.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="w-12 h-12 rounded-full border-2 border-dashed border-zinc-200 flex items-center justify-center">
-            <span className="text-zinc-400 font-light text-2xl">+</span>
-          </div>
-        </div>
-      )}
+      <div
+          onClick={onClick}
+          className="relative aspect-[2/3] rounded-[2.5rem] overflow-hidden bg-zinc-50 border border-zinc-100 group cursor-zoom-in transition-all duration-500 hover:shadow-2xl"
+      >
+        {post.image_url ? (
+            <img src={post.image_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+        ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-300 text-xs">No Image</div>
+        )}
 
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-
-      {(post.caption || post.rating != null) && (
-        <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 border-t border-zinc-50/50">
-          {post.caption && <p className="text-base font-bold text-zinc-900 line-clamp-2 leading-tight">{post.caption}</p>}
-          {post.rating != null && <p className="text-xs font-black text-zinc-400 mt-2 tracking-widest uppercase">{post.rating}/5 RATING</p>}
+        {/* Hover Overlay: Slides up from bottom */}
+        <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 block mb-2">{post.category}</span>
+          {post.caption && <p className="text-base font-bold line-clamp-2 mb-2 leading-tight">{post.caption}</p>}
+          {post.rating && (
+              <div className="flex items-center gap-1">
+                <Star size={12} fill="currentColor" className="text-amber-400" />
+                <span className="text-xs font-bold">{post.rating}/5</span>
+              </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
   );
 }
