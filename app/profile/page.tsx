@@ -2,16 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { Grid, Bookmark, Settings, ChevronLeft, Camera, Globe, Lock, LogOut, MapPin } from "lucide-react";
+import { Grid, Bookmark, ChevronLeft, Camera, LogOut, MapPin } from "lucide-react";
 
 export default function ProfilePage() {
-    const [session, setSession] = useState(null);
-    const [profile, setProfile] = useState(null);
-    const [userPosts, setUserPosts] = useState([]);
+    const [session, setSession] = useState<any>(null);
+    const [profile, setProfile] = useState<any>(null);
+    const [userPosts, setUserPosts] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // 1. Listen for Auth Changes
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
@@ -22,26 +21,26 @@ export default function ProfilePage() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session) fetchProfileAndPosts(session.user.id);
+            else {
+                setProfile(null);
+                setLoading(false);
+            }
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
-    // 2. Fetch Profile and Post data
-    async function fetchProfileAndPosts(userId) {
+    async function fetchProfileAndPosts(userId: string) {
         setLoading(true);
-        // Fetch Profile
         const { data: profileData } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", userId)
             .single();
 
-        // Fetch User's Posts
         const { data: postsData } = await supabase
             .from("posts")
             .select("*")
-            // .eq("user_id", userId) // Uncomment this when your posts table has a user_id
             .order("created_at", { ascending: false });
 
         setProfile(profileData);
@@ -51,33 +50,36 @@ export default function ProfilePage() {
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        setProfile(null);
-        setSession(null);
+        window.location.href = "/";
     };
 
-    if (loading) return <div className="flex h-screen items-center justify-center text-zinc-400 font-medium">Loading your vibe...</div>;
+    if (loading) return <div className="h-screen flex items-center justify-center text-zinc-400 font-medium">Loading your vibe...</div>;
 
-    // --- VIEW 1: AUTHENTICATION (Login/Signup) ---
-    if (!session) {
-        return <AuthUI />;
-    }
+    // Auth Guard
+    if (!session) return <AuthUI />;
 
-    // --- VIEW 2: EDIT PROFILE ---
+    // Edit Mode Guard
     if (isEditing) {
         return (
             <EditProfileView
                 profile={profile}
                 onBack={() => setIsEditing(false)}
-                onUpdate={() => fetchProfileAndPosts(session.user.id)}
+                onUpdate={() => {
+                    fetchProfileAndPosts(session.user.id);
+                    // This tells the Header to re-fetch the small avatar!
+                    window.dispatchEvent(new Event("profileUpdated"));
+                }}
             />
         );
     }
 
-    // --- VIEW 3: PROFILE DISPLAY ---
     return (
         <div className="max-w-4xl mx-auto px-4 pt-12 pb-24 text-zinc-900 animate-in fade-in duration-500">
             <header className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12 relative">
-                <button onClick={handleLogout} className="absolute top-0 right-0 p-2 text-zinc-300 hover:text-red-400 transition-colors">
+                <button
+                    onClick={handleLogout}
+                    className="absolute top-0 right-0 p-3 bg-zinc-50 hover:bg-rose-50 text-zinc-400 hover:text-rose-500 rounded-2xl transition-all border border-zinc-100"
+                >
                     <LogOut size={20} />
                 </button>
 
@@ -92,14 +94,12 @@ export default function ProfilePage() {
                 <div className="flex-1 space-y-4 text-center md:text-left">
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <h1 className="text-2xl font-bold tracking-tight">{profile?.username}</h1>
-                        <div className="flex gap-2 justify-center">
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className="bg-zinc-100 hover:bg-zinc-200 px-6 py-2 rounded-xl text-sm font-semibold transition-all"
-                            >
-                                Edit Profile
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setIsEditing(true)}
+                            className="bg-zinc-100 hover:bg-zinc-200 px-6 py-2 rounded-xl text-sm font-semibold transition-all"
+                        >
+                            Edit Profile
+                        </button>
                     </div>
 
                     <div className="flex justify-center md:justify-start gap-8 text-sm text-zinc-600">
@@ -124,14 +124,11 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-3 gap-1 md:gap-4">
-                {userPosts.map((post) => (
+                {userPosts.map((post: any) => (
                     <div key={post.id} className="relative aspect-square bg-zinc-100 overflow-hidden rounded-md md:rounded-2xl group cursor-pointer">
-                        <img src={post.image_url} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
-                            <span className="font-bold">⭐ {post.rating}/5</span>
-                            <span className="text-[10px] uppercase tracking-tighter bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-md mt-1">
-                {post.category}
-              </span>
+                        <img src={post.image_url} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" alt="post" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white font-bold">
+                            ⭐ {post.rating}/5
                         </div>
                     </div>
                 ))}
@@ -147,7 +144,7 @@ function AuthUI() {
     const [password, setPassword] = useState("");
     const [username, setUsername] = useState("");
 
-    const handleAuth = async (e) => {
+    const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isSignUp) {
             const { error } = await supabase.auth.signUp({
@@ -155,7 +152,7 @@ function AuthUI() {
                 options: { data: { username, full_name: username } }
             });
             if (error) alert(error.message);
-            else alert("Check your email!");
+            else alert("Check your email for confirmation!");
         } else {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) alert(error.message);
@@ -163,7 +160,7 @@ function AuthUI() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-6 font-sans">
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-6">
             <div className="w-full max-w-md bg-white p-10 rounded-[48px] shadow-sm border border-zinc-100">
                 <div className="mb-10 text-center">
                     <div className="w-16 h-16 bg-pink-100 rounded-3xl mx-auto mb-4 flex items-center justify-center">
@@ -204,8 +201,8 @@ function AuthUI() {
     );
 }
 
-// --- SUB-COMPONENT: Edit View ---
-function EditProfileView({ profile, onBack, onUpdate }) {
+// --- SUB-COMPONENT: Edit Profile View ---
+function EditProfileView({ profile, onBack, onUpdate }: any) {
     const [formData, setFormData] = useState(profile);
     const [saving, setSaving] = useState(false);
 
@@ -233,7 +230,7 @@ function EditProfileView({ profile, onBack, onUpdate }) {
             <div className="flex items-center justify-between mb-12">
                 <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors"><ChevronLeft size={24} /></button>
                 <h1 className="text-lg font-bold">Edit Profile</h1>
-                <button onClick={save} disabled={saving} className="text-blue-500 font-bold text-sm">
+                <button onClick={save} disabled={saving} className="text-pink-500 font-bold text-sm">
                     {saving ? "..." : "Done"}
                 </button>
             </div>
@@ -241,12 +238,11 @@ function EditProfileView({ profile, onBack, onUpdate }) {
             <div className="space-y-8">
                 <div className="flex flex-col items-center gap-4">
                     <div className="relative group cursor-pointer">
-                        <img src={formData?.avatar_url || `https://ui-avatars.com/api/?name=${formData?.username}`} className="w-24 h-24 rounded-full object-cover" />
+                        <img src={formData?.avatar_url || `https://ui-avatars.com/api/?name=${formData?.username}`} className="w-24 h-24 rounded-full object-cover" alt="edit-avatar" />
                         <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <Camera className="text-white" size={20} />
                         </div>
                     </div>
-                    <p className="text-xs font-bold text-blue-500">Change Profile Photo</p>
                 </div>
 
                 <div className="space-y-2">
