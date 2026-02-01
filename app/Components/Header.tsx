@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { ArrowLeft, Search, X } from "lucide-react"; // Using Lucide for consistent icons
+import { ArrowLeft, Search, X, User } from "lucide-react";
 
 type TabKey = "Friends" | "Explore" | "Nearby" | "Map";
 type MenuKey = "Profile" | "Save" | "Post" | "Settings";
@@ -37,10 +37,10 @@ export default function Header() {
     const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
 
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-    // Sync search value with URL
     useEffect(() => {
         const query = searchParams.get("q") || "";
         setSearchValue(query);
@@ -51,34 +51,26 @@ export default function Header() {
         if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus();
     }, [isSearchOpen]);
 
-    // Handle clearing search and returning to explore
     const handleClearSearch = () => {
         setIsSearchOpen(false);
         setSearchValue("");
-
-        // 1. Update URL to remove query
         const params = new URLSearchParams(window.location.search);
         params.delete("q");
         const newPath = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
         window.history.replaceState(null, "", newPath);
-
-        // 2. Notify Explore Page to show all posts
         window.dispatchEvent(new Event("searchChange"));
     };
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setSearchValue(val);
-
         const params = new URLSearchParams(window.location.search);
         if (val) params.set("q", val);
         else params.delete("q");
-
         window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
         window.dispatchEvent(new Event("searchChange"));
     };
 
-    // Close on outside click (only if search is empty)
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
@@ -94,24 +86,29 @@ export default function Header() {
     }, [isSearchOpen, searchValue]);
 
     useEffect(() => {
-        async function loadAvatar() {
+        async function loadUserData() {
             const { data: { session } } = await supabase.auth.getSession();
             const userId = session?.user?.id;
             if (userId) {
-                const { data } = await supabase.from("profiles").select("avatar_url").eq("id", userId).maybeSingle();
+                const { data } = await supabase
+                    .from("profiles")
+                    .select("avatar_url, username")
+                    .eq("id", userId)
+                    .maybeSingle();
+
                 setAvatarUrl(data?.avatar_url ?? null);
+                setUserName(data?.username ?? session.user.email?.split('@')[0] ?? "User");
             }
         }
-        loadAvatar();
-        window.addEventListener("profileUpdated", loadAvatar);
-        return () => window.removeEventListener("profileUpdated", loadAvatar);
+        loadUserData();
+        window.addEventListener("profileUpdated", loadUserData);
+        return () => window.removeEventListener("profileUpdated", loadUserData);
     }, []);
 
     return (
         <>
             <header className="sticky top-0 z-50 bg-white px-6 md:px-10 py-6 flex items-center justify-between border-b border-zinc-100">
 
-                {/* Logo - Hidden on mobile search to save space */}
                 <Link
                     href="/"
                     className={`flex items-center gap-2 transition-all ${isSearchOpen ? "max-md:hidden opacity-0 w-0 overflow-hidden" : "opacity-100"}`}
@@ -121,7 +118,6 @@ export default function Header() {
                     </div>
                 </Link>
 
-                {/* Desktop Nav - Hidden when searching */}
                 {!isSearchOpen && (
                     <nav className="hidden md:flex items-center gap-10 lg:gap-14 animate-in fade-in slide-in-from-top-1 duration-300">
                         {NAV_ITEMS.map((item) => {
@@ -140,13 +136,11 @@ export default function Header() {
                     </nav>
                 )}
 
-                {/* Right Side: Search & Profile */}
                 <div className={`flex items-center gap-4 md:gap-6 transition-all ${isSearchOpen ? "flex-1 justify-end" : ""}`}>
 
                     <div className={`relative flex items-center transition-all duration-300 ease-out ${isSearchOpen ? "w-full max-w-2xl" : "w-12 md:w-14"}`}>
                         {isSearchOpen ? (
                             <div className="relative w-full flex items-center gap-2 animate-in slide-in-from-right-4 duration-300">
-                                {/* RETURN ARROW BUTTON */}
                                 <button
                                     onClick={handleClearSearch}
                                     className="p-3 text-zinc-400 hover:text-black hover:bg-zinc-100 rounded-full transition-colors"
@@ -186,36 +180,47 @@ export default function Header() {
                         )}
                     </div>
 
-                    {/* Profile Dropdown */}
+                    {/* Profile Dropdown Section */}
                     {!isSearchOpen && (
-                        <div className="relative flex-shrink-0" ref={dropdownRef}>
+                        <div className="relative flex items-center gap-3 md:gap-4 flex-shrink-0" ref={dropdownRef}>
+                            {/* User Info - Desktop only */}
+                            <div className="hidden lg:flex flex-col items-end">
+                                <span className="text-sm font-bold text-zinc-900 line-clamp-1">{userName || "Guest"}</span>
+                            </div>
+
                             <button
                                 onClick={() => setIsDropdownOpen((v) => !v)}
-                                className={`w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 transition-all p-0.5 active:scale-95 ${isDropdownOpen ? "border-black" : "border-zinc-100"}`}
+                                className={`w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 transition-all p-0.5 active:scale-95 ${isDropdownOpen ? "border-black shadow-lg" : "border-zinc-100 hover:border-zinc-300"}`}
                             >
                                 <img
                                     src={avatarUrl || "https://ui-avatars.com/api/?name=U&background=f4f4f5&color=a1a1aa"}
                                     alt="avatar"
-                                    className="w-full h-full object-cover rounded-full"
+                                    className="w-full h-full object-cover rounded-full bg-zinc-50"
                                 />
                             </button>
 
                             {isDropdownOpen && (
-                                <div className="absolute right-0 mt-4 w-56 bg-white border border-zinc-100 rounded-2xl shadow-2xl py-2 z-[60] animate-in fade-in zoom-in duration-200 origin-top-right">
+                                <div className="absolute right-0 top-full mt-4 w-64 bg-white border border-zinc-100 rounded-2xl shadow-2xl py-3 z-[60] animate-in fade-in zoom-in duration-200 origin-top-right">
+                                    {/* Mobile-only User Info inside dropdown */}
+                                    <div className="lg:hidden px-5 py-2 mb-2 border-b border-zinc-50">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Account</p>
+                                        <p className="text-sm font-bold text-zinc-900 truncate">{userName || "Guest"}</p>
+                                    </div>
+
                                     {DROPDOWN_ITEMS.map((item) => (
                                         <Link
                                             key={item.label}
                                             href={item.href}
                                             onClick={() => setIsDropdownOpen(false)}
-                                            className="block w-full text-left px-5 py-3 text-base font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-black"
+                                            className="block w-full text-left px-5 py-3 text-base font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-black transition-colors"
                                         >
                                             {item.label}
                                         </Link>
                                     ))}
-                                    <div className="my-1 border-t border-zinc-100" />
+                                    <div className="my-2 border-t border-zinc-100" />
                                     <button
                                         onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}
-                                        className="w-full text-left px-5 py-3 text-base font-semibold text-rose-500 hover:bg-rose-50"
+                                        className="w-full text-left px-5 py-3 text-base font-bold text-rose-500 hover:bg-rose-50 transition-colors"
                                     >
                                         Sign Out
                                     </button>
@@ -226,7 +231,6 @@ export default function Header() {
                 </div>
             </header>
 
-            {/* Mobile Nav */}
             <nav className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-10 py-5 rounded-full flex items-center gap-10 shadow-2xl z-50">
                 {NAV_ITEMS.map((item) => {
                     const active = isActive(pathname, item.href);
@@ -239,4 +243,4 @@ export default function Header() {
             </nav>
         </>
     );
-}   
+}
